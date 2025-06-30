@@ -1,0 +1,7 @@
+venv
+cmake-build-*
+.idea
+.vs
+download
+CMakeLists.txt.*
+build/
