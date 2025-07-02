@@ -1,7 +1,7 @@
 // Copyright (C) 2016 The Qt Company Ltd.
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
-#include "../include/Scene.h"
+#include "../include/QRenderer2D.h"
 
 #include <QMouseEvent>
 #include <cmath>
@@ -15,18 +15,18 @@
 // #include "Unit.h"
 // #include "MapConfig.h"
 
-Scene::Scene(QWidget *parent): QOpenGLWidget(parent) {
+QRenderer2D::QRenderer2D(QWidget *parent): QOpenGLWidget(parent) {
 }
 
 
-Scene::~Scene() {
+QRenderer2D::~QRenderer2D() {
     makeCurrent();
     delete batch;
     doneCurrent();
 }
 float ths = 0;
 
-void Scene::initializeGL() {
+void QRenderer2D::initializeGL() {
     initializeOpenGLFunctions(); // Clear color and depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //! [2]
@@ -43,13 +43,13 @@ void Scene::initializeGL() {
 
 
 
-void Scene::flush() {
+void QRenderer2D::flush() {
     update();
 }
 
 
 //! [5]
-void Scene::paintGL() {
+void QRenderer2D::paintGL() {
     glAlphaFunc(GL_EQUAL, 1);
     glClearColor(0, 1, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -78,22 +78,22 @@ void Scene::paintGL() {
     batch->end();
 }
 
-void Scene::resizeGL(int w, int h) {
+void QRenderer2D::resizeGL(int w, int h) {
     QOpenGLWidget::resizeGL(w, h);
 }
 
-void Scene::resizeEvent(QResizeEvent *event) {
+void QRenderer2D::resizeEvent(QResizeEvent *event) {
     QOpenGLWidget::resizeEvent(event);
 }
 
-QVector3D Scene::screen_to_world(const QPointF &screen_pos) const {
+QVector3D QRenderer2D::screen_to_world(const QPointF &screen_pos) const {
     const QPointF relate = screen_pos - this->pos();
     float x = relate.x() * camera_zoom + camera_pos.x() - this->size().width() * camera_zoom / 2;
     float y = -relate.y() * camera_zoom + camera_pos.y() + this->size().height() * camera_zoom / 2;
     return {x, y, 0};
 }
 
-QVector3D Scene::screen_relative_to_world_relative(const QPointF &screen_relative) const {
+QVector3D QRenderer2D::screen_relative_to_world_relative(const QPointF &screen_relative) const {
     return {
         static_cast<float>(screen_relative.x() * camera_zoom), static_cast<float>(-screen_relative.y() * camera_zoom), 0
     };

@@ -20,7 +20,7 @@ find_package(Qt6 COMPONENTS
 include_directories(include)
 
 add_library(QRenderer2D
-        src/Scene.cpp
+        src/QRenderer2D.cpp
         src/SpiritBatch.cpp
 )
 target_include_directories(QRenderer2D INTERFACE include)

@@ -9,18 +9,18 @@
 #include "SpiritBatch.h"
 
 
-class Scene : public QOpenGLWidget, QOpenGLFunctions {
+class QRenderer2D : public QOpenGLWidget, QOpenGLFunctions {
 public:
     using QOpenGLWidget::QOpenGLWidget;
     [[nodiscard]] QVector3D screen_to_world(const QPointF &screen_pos) const;
     [[nodiscard]] QVector3D screen_relative_to_world_relative(const QPointF &screen_relative) const;
-    ~Scene() override;
+    ~QRenderer2D() override;
     void flush();
     virtual void render(SpiritBatch & batch) =0;
     QVector3D camera_pos = QVector3D(0, 0, -5);
     float camera_zoom = 0.01;
 protected:
-    explicit Scene(QWidget *parent);
+    explicit QRenderer2D(QWidget *parent);
 private:
     void initializeGL() override;
     void paintGL() override;
