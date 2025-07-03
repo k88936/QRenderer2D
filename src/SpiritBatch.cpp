@@ -6,26 +6,40 @@
 #include <QVector2D>
 
 #include <QOpenGLBuffer>
+#include <ranges>
 
-struct VertexData {
+struct VertexData
+{
     QVector3D position;
     QVector2D texCoord;
 };
 
 //! [0.5]
-SpiritBatch::SpiritBatch() {
+SpiritBatch::SpiritBatch(): lastTextureId(-1)
+{
     initializeOpenGLFunctions();
     init_shaders();
 }
 
-SpiritBatch::~SpiritBatch() {
-    for (auto [fst, snd]: textures) {
-        // delete snd.first;
-        // delete snd.second;
+SpiritBatch::~SpiritBatch()
+{
+    for (auto [fst, snd] : textures | std::views::values)
+    {
+        if (fst)
+        {
+            fst->destroy();
+            delete fst;
+        }
+        if (snd)
+        {
+            snd->destroy();
+            delete snd;
+        }
     }
 }
 
-void SpiritBatch::begin() {
+void SpiritBatch::begin()
+{
     bindTextureShader();
     constexpr auto camera_pos = QVector3D(0, 0, 1);
     constexpr float camera_zoom = 0.01;
@@ -33,23 +47,29 @@ void SpiritBatch::begin() {
     setView(camera_pos, camera_zoom);
 }
 
-void SpiritBatch::end() {
+void SpiritBatch::end()
+{
 }
 
-void SpiritBatch::setView(const QVector3D &cam_pos, const float cam_zoom) {
+void SpiritBatch::setView(const QVector3D& cam_pos, const float cam_zoom)
+{
     setView(cam_pos, cam_zoom, 1080, 720);
 }
 
 
-
-void SpiritBatch::draw(const Texture &texture, const QMatrix4x4 &transform) {
-    bindTexture(texture);
+void SpiritBatch::draw(const Texture& texture, const QMatrix4x4& transform)
+{
+    if (lastTextureId != texture.id)
+    {
+        bindTexture(texture);
+    }
     setTransform(transform);
     flush();
 }
 
 //! [0]
-void SpiritBatch::init_shaders() {
+void SpiritBatch::init_shaders()
+{
     // Compile vertex shader
     if (!shader.addShaderFromSourceFile(QOpenGLShader::Vertex, "assets/t_vshader.glsl"))
         throw std::runtime_error("vertex shader compile error");
@@ -64,58 +84,68 @@ void SpiritBatch::init_shaders() {
 }
 
 
-void SpiritBatch::setTransform(const QMatrix4x4 &matrix) {
+void SpiritBatch::setTransform(const QMatrix4x4& matrix)
+{
     shader.setUniformValue("transform", matrix);
 }
 
-void SpiritBatch::setColor(const QVector4D &color) {
+void SpiritBatch::setColor(const QVector4D& color)
+{
     shader.setUniformValue("color", color);
 }
 
 //! [2]
-void SpiritBatch::flush() {
+void SpiritBatch::flush()
+{
     glDrawArrays(GL_QUADS, 0, 4);
 }
 
-void SpiritBatch::setView(const QMatrix4x4 &view) {
+void SpiritBatch::setView(const QMatrix4x4& view)
+{
     shader.setUniformValue("mvp_matrix", view);
 }
 
-void SpiritBatch::setView(const QVector3D &cam_pos, const float cam_zoom, const int width, const int height) {
+void SpiritBatch::setView(const QVector3D& cam_pos, const float cam_zoom, const int width, const int height)
+{
     constexpr qreal zNear = 2.0, zFar = 8.0;
     QMatrix4x4 projection;
-    projection.ortho(-width * cam_zoom / 2 + cam_pos.x(),
-                     width * cam_zoom / 2 + cam_pos.x(),
-                     -height * cam_zoom / 2 + cam_pos.y(),
-                     height * cam_zoom / 2 + cam_pos.y(), zNear, zFar);
+    projection.ortho(-width * cam_zoom / 2.0f + cam_pos.x(),
+                     width * cam_zoom / 2.0f + cam_pos.x(),
+                     -height * cam_zoom / 2.0f + cam_pos.y(),
+                     height * cam_zoom / 2.0f + cam_pos.y(), zNear, zFar);
     QMatrix4x4 matrix;
     matrix.translate(0.0, 0.0, cam_pos.z());
     projection *= matrix;
     setView(projection);
 }
 
-inline float SpiritBatch::worldToPixel(const float v) {
-    return v/40;
+inline float SpiritBatch::worldToPixel(const float v)
+{
+    return v / 40;
 }
 
-QVector3D SpiritBatch::worldToPixel(QVector3D v) {
+QVector3D SpiritBatch::worldToPixel(const QVector3D v)
+{
     return {worldToPixel(v.x()), worldToPixel(v.y()), worldToPixel(v.z())};
 }
 
-void SpiritBatch::resisterTexture(const Texture &metaImage) {
+void SpiritBatch::resisterTexture(const Texture& metaImage)
+{
     const auto handle = metaImage.id;
-    if (textures.contains(handle)) {
+    if (textures.contains(handle))
+    {
         return;
     }
     // if (handle == "NONE") {
     //     return;
     // }
-    QOpenGLVertexArrayObject *vao;
-    QOpenGLTexture *texture;
-    for (int i = 0; i < metaImage.frames; ++i) {
+    QOpenGLVertexArrayObject* vao;
+    QOpenGLTexture* texture;
+    for (int i = 0; i < metaImage.frames; ++i)
+    {
         QRect rect = QRect(i * metaImage.image.width() / metaImage.frames, 0,
                            metaImage.image.width() / metaImage.frames, metaImage.image.height());
-        auto *arrayBuf = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+        auto* arrayBuf = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
         vao = new QOpenGLVertexArrayObject();
         vao->create();
         arrayBuf->create();
@@ -123,57 +153,58 @@ void SpiritBatch::resisterTexture(const Texture &metaImage) {
         QVector2D texCoords[4];
 
 
-
-
         texCoords[0] = QVector2D(0, 0);
         texCoords[1] = QVector2D(1, 0);
         texCoords[2] = QVector2D(1, 1);
         texCoords[3] = QVector2D(0, 1);
-        if (metaImage.is_raw_size) {
+        if (metaImage.is_raw_size)
+        {
             vertices[0] = {
-                worldToPixel(QVector3D(-static_cast<float>(rect.height()) * metaImage.scale ,
-                          -static_cast<float>(rect.width()) * metaImage.scale , 0)),
+                worldToPixel(QVector3D(-static_cast<float>(rect.height()) * metaImage.scale,
+                                       -static_cast<float>(rect.width()) * metaImage.scale, 0)),
                 texCoords[0]
             }; // v0
             vertices[1] = {
-                worldToPixel(QVector3D(static_cast<float>(rect.height()) * metaImage.scale ,
-                          -static_cast<float>(rect.width()) * metaImage.scale , 0)),
+                worldToPixel(QVector3D(static_cast<float>(rect.height()) * metaImage.scale,
+                                       -static_cast<float>(rect.width()) * metaImage.scale, 0)),
                 texCoords[1]
             }; // v1
             vertices[2] = {
-                worldToPixel( QVector3D(static_cast<float>(rect.height()) * metaImage.scale ,
-                          static_cast<float>(rect.width()) * metaImage.scale ,0)),
+                worldToPixel(QVector3D(static_cast<float>(rect.height()) * metaImage.scale,
+                                       static_cast<float>(rect.width()) * metaImage.scale, 0)),
                 texCoords[2]
             }; // v3
             vertices[3] = {
-                worldToPixel(QVector3D(-static_cast<float>(rect.height()) * metaImage.scale ,
-                          static_cast<float>(rect.width()) * metaImage.scale, 0)),
+                worldToPixel(QVector3D(-static_cast<float>(rect.height()) * metaImage.scale,
+                                       static_cast<float>(rect.width()) * metaImage.scale, 0)),
                 texCoords[3]
             }; // v2
-        } else {
+        }
+        else
+        {
             // Vertex data for face 0
             vertices[0] = {
                 QVector3D(
-                    -static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5 * metaImage.scale,
-                    -0.5 * metaImage.scale, 0),
+                    -static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5f * metaImage.scale,
+                    -0.5f * metaImage.scale, 0),
                 texCoords[0]
             }; // v0
             vertices[1] = {
                 QVector3D(
-                    static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5 * metaImage.scale,
-                    -0.5 * metaImage.scale, 0),
+                    static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5f * metaImage.scale,
+                    -0.5f * metaImage.scale, 0),
                 texCoords[1]
             }; // v1
             vertices[2] = {
                 QVector3D(
-                    static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5 * metaImage.scale,
-                    0.5 * metaImage.scale, 0),
+                    static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5f * metaImage.scale,
+                    0.5f * metaImage.scale, 0),
                 texCoords[2]
             }; // v3
             vertices[3] = {
                 QVector3D(
-                    -static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5 * metaImage.scale,
-                    0.5 * metaImage.scale, 0),
+                    -static_cast<float>(rect.height()) / static_cast<float>(rect.width()) * 0.5f * metaImage.scale,
+                    0.5f * metaImage.scale, 0),
                 texCoords[3]
             }; // v2
         }
@@ -206,22 +237,26 @@ void SpiritBatch::resisterTexture(const Texture &metaImage) {
         texture->setMagnificationFilter(QOpenGLTexture::Linear);
         textures[handle] = std::make_pair(texture, vao);
     }
-    if (metaImage.frames == 1) {
+    if (metaImage.frames == 1)
+    {
         textures[handle] = std::make_pair(texture, vao);
     }
 }
 
 
-void SpiritBatch::bindTexture(const Texture &texture) {
+void SpiritBatch::bindTexture(const Texture& texture)
+{
     const int handle = texture.id;
-    if (!textures.contains(handle)) {
+    if (!textures.contains(handle))
+    {
         resisterTexture(texture);
     }
     textures.at(handle).first->bind();
     textures.at(handle).second->bind();
 }
 
-void SpiritBatch::bindTextureShader() {
+void SpiritBatch::bindTextureShader()
+{
     this->shader.bind();
 }
 

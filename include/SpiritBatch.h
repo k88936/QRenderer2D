@@ -41,6 +41,7 @@ private:
     std::unordered_map<int, std::pair<QOpenGLTexture*, QOpenGLVertexArrayObject*>> textures;
     QOpenGLShaderProgram shader;
     QMatrix4x4 view;
+    int lastTextureId;
 };
 
 #endif // RENDER_UTILS_H
